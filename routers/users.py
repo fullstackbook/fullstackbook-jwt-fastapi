@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from database import get_session, engine
-from model import User
+from model import User, Role, UserToRole
 
 router = APIRouter()
 
@@ -138,7 +138,11 @@ def read_own_items(current_user: User = Depends(get_current_active_user)):
 @router.post("/users", response_model=UserRead)
 def sign_up(user: UserIn, session: Session = Depends(get_session)):
     hashed_password = get_password_hash(user.password)
+    role = session.query(Role).filter(Role.name == "ROLE_USER").first()
+    user_to_role = UserToRole()
+    user_to_role.role = role
     new_user = User(email=user.email, username=user.username, password=hashed_password)
+    new_user.roles.append(user_to_role)
     session.add(new_user)
     session.commit()
     session.refresh(new_user)
