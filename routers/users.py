@@ -100,10 +100,32 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 
 def get_current_active_user(current_user: User = Depends(get_current_user)):
-    # if current_user.disabled:
-    #     raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+
+def admin_role(session: Session = Depends(get_session), current_user: User = Depends(get_current_active_user)):
+    roles = session.query(Role).filter(Role.name.in_(['ROLE_ADMIN']))
+    role_ids = [role.id for role in roles]
+    user_to_roles = session.query(UserToRole).filter(UserToRole.user_id == current_user.id).filter(UserToRole.role_id.in_(role_ids)).all()
+    if len(user_to_roles) == 0:
+        raise HTTPException(403, "Unauthorized.")
+    return current_user
+
+def moderator_role(session: Session = Depends(get_session), current_user: User = Depends(get_current_active_user)):
+    roles = session.query(Role).filter(Role.name.in_(['ROLE_MODERATOR']))
+    role_ids = [role.id for role in roles]
+    user_to_roles = session.query(UserToRole).filter(UserToRole.user_id == current_user.id).filter(UserToRole.role_id.in_(role_ids)).all()
+    if len(user_to_roles) == 0:
+        raise HTTPException(403, "Unauthorized.")
+    return current_user
+
+def user_role(session: Session = Depends(get_session), current_user: User = Depends(get_current_active_user)):
+    roles = session.query(Role).filter(Role.name.in_(['ROLE_USER', 'ROLE_MODERATOR', 'ROLE_ADMIN']))
+    role_ids = [role.id for role in roles]
+    user_to_roles = session.query(UserToRole).filter(UserToRole.user_id == current_user.id).filter(UserToRole.role_id.in_(role_ids)).all()
+    if len(user_to_roles) == 0:
+        raise HTTPException(403, "Unauthorized.")
+    return current_user
 
 @router.post("/token", response_model=Token)
 def login_for_access_token(
@@ -147,3 +169,19 @@ def sign_up(user: UserIn, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(new_user)
     return UserRead(username=new_user.username, email=new_user.email)
+
+@router.get("/admin")
+def admin(current_user = Depends(admin_role)):
+    return "admin content"
+
+@router.get("/user")
+def user(current_user = Depends(user_role)):
+    return "user content"
+
+@router.get("/moderator")
+def moderator(current_user = Depends(moderator_role)):
+    return "moderator content"
+
+@router.get("/all")
+def all():
+    return "public content"
