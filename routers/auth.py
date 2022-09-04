@@ -9,11 +9,10 @@ from model import User, Role, UserToRole
 from schemas import SignInRequest, Token, UserIn, UserRead
 
 router = APIRouter(prefix="/api/auth")
-oauth_router = APIRouter()
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 43200
 
-@oauth_router.post("/token", response_model=Token)
+@router.post("/token", response_model=Token)
 def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends()
 ):
